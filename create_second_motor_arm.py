@@ -228,44 +228,7 @@ def create_joint_motor_holder(base_cylinder):
 
         joint_motor_holder = join_parts(joint_motor_holder, side_bar)
 
-    # Add a rectangle on the left side of the joint motor holder with a rounded top to add the endstop
-        
-
-    endstop_rectangle_height = 36
-    endstop_rectangle_width = 55
-    endstop_rectangle_length = 8
-
-    endstop_rectangle = create_centered_rectangle(endstop_rectangle_length, endstop_rectangle_width, endstop_rectangle_height)
-
-    # position it in front of the joint motor holder
-
-    endstop_rectangle.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2, -endstop_rectangle_width + 7.5, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
-
-    # add a rounded by joining a cylinder and a rectangle
-
-    endstop_rounded_radius = endstop_rectangle_length/2
-
-    endstop_rounded = create_cylinder(endstop_rectangle_width, endstop_rounded_radius, (0,0,0))
-
-    endstop_rounded.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2, - endstop_rectangle_width/2 - endstop_rectangle_width + 7.5, first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height), compound_rotation([(0,90,0),(90,0,0)]))
-
-    endstop_rectangle = join_parts(endstop_rectangle, endstop_rounded)
-
-    # now make 4 holes in the endstop rectangle
-
-    endstop_hole_radius = m5_size
-
-    for i in range(4):
-        angle = (360/4 * i) + 360/4/2
-
-        x = math.cos(math.radians(angle)) * endstop_rectangle_height/3
-        y = math.sin(math.radians(angle)) * endstop_rectangle_width/4
-
-        endstop_rectangle = make_hole(endstop_rectangle, endstop_hole_radius*2, HOLE_INF, (0,-y - endstop_rectangle_width,x + first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height/2),through_hole=True,hole_rotation=[(0,90,0),(0,0,0)])
-
-    # join the endstop to the joint motor holder
-
-    joint_motor_holder = join_parts(joint_motor_holder, endstop_rectangle)
+    # position the join motor holder back
 
     base_cylinder.Label = "Base For First Joint"
 
@@ -302,20 +265,16 @@ def create_hollow_cylinder(outer_radius, inner_radius, height, position=(0,0,0))
     return cylinder_part
 
 HOLE_INF = 1000
-joint_motor_holder_height = 86
-joint_motor_holder_width = 86
-joint_motor_holder_width_for_base = joint_motor_holder_width + 8 + 8
-joint_motor_holder_length = 8
-joint_motor_holder_slope_length = 50
 tolerance = 0.5
 m5_size = 2.5 + tolerance*2
-first_joint_base_initial_height = 50
-base_cylinder_radius = 95
-base_cylinder_height = 8
+m5_head_size = 8.5 + tolerance*2
 motor_shaft_hole_radius = 7 + tolerance
 bearing_width = 7 + tolerance
 bearing_outer_radius = 22/2 + tolerance
 bearing_inner_radius = 8/2 + tolerance/2
+arm_cylinder_radius = 40
+arm_cylinder_height = 130
+base_current_height = 150
 
 def main():
 
@@ -323,58 +282,108 @@ def main():
 
     # Bearing dimensions
 
+    # Create the main arm cylinder
+
+    arm_cylinder = create_cylinder(arm_cylinder_height, arm_cylinder_radius, (0,0,0))
+
+    # Add 10 extra milimeters of cylinder on top
+        
+    arm_cylinder_extra_height = 5
+    arm_cylinder_extra = create_cylinder(arm_cylinder_extra_height, arm_cylinder_radius, (0,0,-arm_cylinder_extra_height))
+
+
+    arm_cylinder = join_parts(arm_cylinder, arm_cylinder_extra)
+
+
+    # Add 8 slots for screws on the outside of the arm cylinder
+
+    for i in range(8):
+
+        angle = (360/8 * i) + 360/8/2
+
+        x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
+        y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
+
+        hole_height = 22
+
+        arm_cylinder = make_hole(arm_cylinder, m5_head_size*2, hole_height, (x,y,0),hole_rotation=(0,0,0))
+
+        # make another cut at half of the distance extra
+
+        x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size/2)
+        y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size/2)
+
+        extra_cut = create_centered_rectangle(m5_head_size, m5_head_size*2, hole_height)
+
+        extra_cut.Placement = App.Placement(App.Vector(x,y,0), App.Rotation(App.Vector(0,0,1),angle))
+
+        arm_cylinder = cut(arm_cylinder, extra_cut)
+
+        # now make an m5 cut on the top cylinder
+
+        x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
+        y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
+
+        arm_cylinder = make_hole(arm_cylinder, m5_size*2, arm_cylinder_extra_height, (x,y,-arm_cylinder_extra_height),hole_rotation=(0,0,0))
+
+    # now for the motor holder, first add half a cylinder on top of the base arm
+    
+    half_cylinder_radius = 35
+    half_cylinder_height = arm_cylinder_radius*2
+
+    half_cylinder = create_cylinder(half_cylinder_height, half_cylinder_radius, (0,0,arm_cylinder_height))
+
+    # create the square to cut half the cylinder
+
+    half_cylinder_cut = create_centered_rectangle(half_cylinder_height, half_cylinder_radius*2, half_cylinder_radius)
+
+    half_cylinder_cut.Placement = App.Placement(App.Vector(0,0,arm_cylinder_height - half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
+
+
+    
+    
+    half_cylinder.Placement = App.Placement(App.Vector(-half_cylinder_height/2,0,arm_cylinder_height), compound_rotation([(0,90,0),(0,0,90)])) 
     
 
+    half_cylinder = cut(half_cylinder, half_cylinder_cut)
 
+    # now add an extra square below the half cylinder
 
-    extra_height = 10
-    radius_range_to_keep = [base_cylinder_radius - 14, base_cylinder_radius - 26]
+    half_cylinder_cut = create_centered_rectangle(half_cylinder_height, half_cylinder_radius*2, half_cylinder_radius)
 
+    half_cylinder_cut.Placement = App.Placement(App.Vector(0,0,arm_cylinder_height - half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
 
+    half_cylinder = join_parts(half_cylinder, half_cylinder_cut)
+
+    # now move the half cylinder up
+
+    half_cylinder.Placement = App.Placement(App.Vector(0,0,half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
+
+    # now make a hole in the half cylinder for the motor shaft
+
+    half_cylinder = make_hole(half_cylinder, motor_shaft_hole_radius*2, HOLE_INF, (0,0,arm_cylinder_height + half_cylinder_radius),through_hole=True,hole_rotation=[(0,90,0)])
     
-    base_cylinder = create_cylinder(base_cylinder_height + extra_height, base_cylinder_radius, (0,0,first_joint_base_initial_height - extra_height))
-
-    # Create the hollow cylinder to cut the base cylinder to keep the radius
-
-    hollow_cylinder = create_hollow_cylinder(base_cylinder_radius, radius_range_to_keep[0], extra_height, position=(0,0,first_joint_base_initial_height - extra_height))
-
-    # Cut the base cylinder with the hollow cylinder
-
-    base_cylinder = cut(base_cylinder, hollow_cylinder)
-
-    # Create the hollow cylinder to cut the base cylinder to keep the radius
-
-    hollow_cylinder = create_hollow_cylinder(radius_range_to_keep[1], 0, extra_height, position=(0,0,first_joint_base_initial_height - extra_height))
-
-    # Cut the base cylinder with the hollow cylinder
-
-    base_cylinder = cut(base_cylinder, hollow_cylinder)
-    
-    
-    base_cylinder = make_hole(base_cylinder, motor_shaft_hole_radius*2, HOLE_INF, (0,0,0),through_hole=True)
-
-    # Now a square hole for the key
+    # now for the keyhole
 
     key_hole_width = 5 + tolerance/3
 
     key_hole = create_centered_rectangle(key_hole_width, key_hole_width, HOLE_INF)
-
-
-    key_hole.Placement = App.Placement(App.Vector(-motor_shaft_hole_radius - key_hole_width/3, 0, 0), App.Rotation())
-
-    base_cylinder = cut(base_cylinder, key_hole)
-
     
 
+    key_hole.Placement = App.Placement(App.Vector(-HOLE_INF/2,0, arm_cylinder_height + half_cylinder_radius -motor_shaft_hole_radius - key_hole_width/3), compound_rotation([(0,90,0)]))
 
-    # Make the first joint motor holder
+    half_cylinder = cut(half_cylinder, key_hole)
 
+    # now create a hollow cylinder to cut the parts that are not needed
+
+    hollow_cylinder = create_hollow_cylinder(arm_cylinder_radius + 200, arm_cylinder_radius, HOLE_INF)
+
+    half_cylinder = cut(half_cylinder, hollow_cylinder)
+
+    arm_cylinder = join_parts(arm_cylinder, half_cylinder)
     
-    joint_motor_holder,base_cylinder = create_joint_motor_holder(base_cylinder)
-
-    
-
-
+    arm_cylinder.Label = "Arm Cylinder"
+    arm_cylinder.Placement = App.Placement(App.Vector(0,0,base_current_height), App.Rotation(App.Vector(0,0,1),0))
 
     # Update the view
     Gui.ActiveDocument.recompute()
