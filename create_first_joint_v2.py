@@ -231,15 +231,17 @@ def create_joint_motor_holder(base_cylinder):
     # Add a rectangle on the left side of the joint motor holder with a rounded top to add the endstop
         
 
-    endstop_rectangle_height = 36
-    endstop_rectangle_width = 55
+    endstop_rectangle_height = 40
+    endstop_rectangle_width = 100
     endstop_rectangle_length = 8
 
     endstop_rectangle = create_centered_rectangle(endstop_rectangle_length, endstop_rectangle_width, endstop_rectangle_height)
 
     # position it in front of the joint motor holder
 
-    endstop_rectangle.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2, -endstop_rectangle_width + 7.5, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
+    endstop_start_y = -endstop_rectangle_width/2 - motor_shaft_hole_radius - 12.5
+
+    endstop_rectangle.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2, endstop_start_y, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
 
     # add a rounded by joining a cylinder and a rectangle
 
@@ -247,26 +249,60 @@ def create_joint_motor_holder(base_cylinder):
 
     endstop_rounded = create_cylinder(endstop_rectangle_width, endstop_rounded_radius, (0,0,0))
 
-    endstop_rounded.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2, - endstop_rectangle_width/2 - endstop_rectangle_width + 7.5, first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height), compound_rotation([(0,90,0),(90,0,0)]))
+    endstop_rounded.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 + endstop_rectangle_length/2,endstop_start_y - endstop_rectangle_width/2, first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height), compound_rotation([(0,90,0),(90,0,0)]))
 
     endstop_rectangle = join_parts(endstop_rectangle, endstop_rounded)
 
     # now make 4 holes in the endstop rectangle
 
     endstop_hole_radius = m5_size
+    length_until_border = 60.15
 
-    for i in range(4):
-        angle = (360/4 * i) + 360/4/2
+    for i in range(2):
+        angle = (360/2 * i) + 360/2/2
 
         x = math.cos(math.radians(angle)) * endstop_rectangle_height/3
-        y = math.sin(math.radians(angle)) * endstop_rectangle_width/4
+        y = math.sin(math.radians(angle)) * length_until_border/6
 
-        endstop_rectangle = make_hole(endstop_rectangle, endstop_hole_radius*2, HOLE_INF, (0,-y - endstop_rectangle_width,x + first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height/2),through_hole=True,hole_rotation=[(0,90,0),(0,0,0)])
+        endstop_rectangle = make_hole(endstop_rectangle, endstop_hole_radius*2, HOLE_INF, (0,-y - length_until_border/1.2,x + first_joint_base_initial_height + base_cylinder_height + endstop_rectangle_height - spacer_radius ),through_hole=True,hole_rotation=[(0,90,0),(0,0,0)])
+    
+    
+    # add a sloped wall to the endstop rectangle
+        
+    endstop_slope_angle = 30
+
+    endstop_slope = create_sloped_wall(100, endstop_rectangle_height - spacer_radius*2, endstop_rectangle_width, endstop_slope_angle,offset_length=0,label="Endstop Slope")
+
+    endstop_slope.Placement = App.Placement(App.Vector(-joint_motor_holder_width_for_base/2 - 100/2, endstop_start_y, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),180))
+
+    endstop_rectangle = join_parts(endstop_rectangle, endstop_slope)
+
+
+    # now cut the part after the outer radius
+
+    endstop_rectangle = cut(endstop_rectangle, create_hollow_cylinder(200, base_cylinder_radius, HOLE_INF, position=(0,0,0)))
+
+    # now make a hole for a screw on the outer radius of the base cylinder 
+
+    angle = 215
+
+    x = math.cos(math.radians(angle)) * (base_cylinder_radius - spacer_radius)
+    y = math.sin(math.radians(angle)) * (base_cylinder_radius - spacer_radius)
+
+    endstop_rectangle = make_hole(endstop_rectangle, spacer_radius*2, HOLE_INF, (x,y, first_joint_base_initial_height + base_cylinder_height + side_bar_height))
+    
+
 
     # join the endstop to the joint motor holder
 
     joint_motor_holder = join_parts(joint_motor_holder, endstop_rectangle)
 
+    # make a hole on the other side of the joint motor holder for the endstop holding screw
+
+    joint_motor_holder = make_hole(joint_motor_holder, m5_size*2, HOLE_INF, (x,y, first_joint_base_initial_height + base_cylinder_height + side_bar_height),through_hole=True)
+    
+    base_cylinder = make_hole(base_cylinder, m5_size*2, HOLE_INF, (x,y, first_joint_base_initial_height + base_cylinder_height),through_hole=True)
+    
     base_cylinder.Label = "Base For First Joint"
 
     joint_motor_holder.Label = "Motor Holder For First Joint"
@@ -311,6 +347,7 @@ tolerance = 0.5
 m5_size = 2.5 + tolerance*2
 first_joint_base_initial_height = 50
 base_cylinder_radius = 95
+spacer_radius = 8 + tolerance
 base_cylinder_height = 8
 motor_shaft_hole_radius = 7 + tolerance
 bearing_width = 7 + tolerance
@@ -349,7 +386,19 @@ def main():
     # Cut the base cylinder with the hollow cylinder
 
     base_cylinder = cut(base_cylinder, hollow_cylinder)
+
+    # now create some extra depth in the motor shaft
+
+    extra_depth_motor_shaft = 18
+    extra_depth_motor_shaft_radius = motor_shaft_hole_radius + 10
+
+    extra_depth_motor_shaft_base_cylinder = create_cylinder(extra_depth_motor_shaft, base_cylinder_radius, (0,0,first_joint_base_initial_height - extra_depth_motor_shaft))
+
+    hollow_cylinder = create_hollow_cylinder(base_cylinder_radius, extra_depth_motor_shaft_radius, extra_depth_motor_shaft, position=(0,0,first_joint_base_initial_height  - extra_depth_motor_shaft))
     
+    extra_depth_motor_shaft_base_cylinder = cut(extra_depth_motor_shaft_base_cylinder, hollow_cylinder)
+
+    base_cylinder = join_parts(base_cylinder, extra_depth_motor_shaft_base_cylinder)
     
     base_cylinder = make_hole(base_cylinder, motor_shaft_hole_radius*2, HOLE_INF, (0,0,0),through_hole=True)
 
