@@ -211,10 +211,16 @@ def main():
     m5_size = 2.5 + tolerance*2
 
 
+    nut_holder_width = 10
+    nut_holder_length = 6
+    nut_holder_height = 2
+
     # Create two cylinders
     base_cylinder_radius = 95
-    base_cylinder_height = 5
+    base_cylinder_height = 10
     base_cylinder = create_cylinder(base_cylinder_height, base_cylinder_radius, (0,0,0))
+
+
 
 
     number_of_holes = 8
@@ -229,12 +235,25 @@ def main():
 
         base_cylinder = make_hole(base_cylinder, m5_size * 2, HOLE_INF, (x,y,0),through_hole=True, hole_rotation=(0,0,0))
 
+        first_nut_holder = create_centered_rectangle(nut_holder_length, nut_holder_width, nut_holder_height, label="FirstNutHolder")
+
+        first_nut_holder.Placement = App.Placement(App.Vector(x, y, base_cylinder_height - nut_holder_height), App.Rotation(App.Vector(0, 0, 1), angle))
+
+        base_cylinder = cut(base_cylinder, first_nut_holder)
+
         second_hole_distance_from_center = base_cylinder_radius - 25
 
         x = math.cos(math.radians(angle)) * second_hole_distance_from_center
         y = math.sin(math.radians(angle)) * second_hole_distance_from_center
 
         base_cylinder = make_hole(base_cylinder, m5_size * 2, HOLE_INF, (x,y,0),through_hole=True, hole_rotation=(0,0,0))
+
+        second_nut_holder = create_centered_rectangle(nut_holder_length, nut_holder_width, nut_holder_height, label="SecondNutHolder")
+
+        second_nut_holder.Placement = App.Placement(App.Vector(x, y, base_cylinder_height - nut_holder_height), App.Rotation(App.Vector(0, 0, 1), angle))
+
+        base_cylinder = cut(base_cylinder, second_nut_holder)
+
 
 
     # Create the bottom bearings holding squares
@@ -336,7 +355,11 @@ def main():
 
         base_cylinder = make_hole(base_cylinder, motor_hole_radius * 2, HOLE_INF,(x, y, base_cylinder_height),through_hole=True)
         
+        motor_nut_holder = create_centered_rectangle(nut_holder_length, nut_holder_width, nut_holder_height, label="MotorNutHolder")
 
+        motor_nut_holder.Placement = App.Placement(App.Vector(x, y, base_cylinder_height - nut_holder_height), App.Rotation(App.Vector(0, 0, 1), angle_deg))
+
+        base_cylinder = cut(base_cylinder, motor_nut_holder)
 
     # now the hole for the shaft in the middle
         

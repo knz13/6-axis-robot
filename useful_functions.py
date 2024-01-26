@@ -194,164 +194,112 @@ def reset_rotation(obj):
 
     return obj
 
-HOLE_INF = 1000
+def create_centered_triangle(side_length, height, label="Compound"):
+    """
+    Creates an equilateral triangle with its centroid at the center of the X-Y plane.
+    Also creates a compound object to group the triangle.
 
-def main():
+    Parameters:
+    side_length: Length of each side of the equilateral triangle.
+    height: Height of the triangle (in the Z direction).
+    """
+    doc = App.activeDocument()
 
+    # Calculate the vertices of the triangle
+    h = math.sqrt(3) / 2 * side_length
+    v1 = App.Vector(-side_length / 2, -h / 3, 0)
+    v2 = App.Vector(side_length / 2, -h / 3, 0)
+    v3 = App.Vector(0, 2 * h / 3, 0)
+
+    # Create the triangle face
+    wire = Part.makePolygon([v1, v2, v3, v1])
+    face = Part.Face(wire)
+
+    # Extrude the face to create a solid
+    triangle = face.extrude(App.Vector(0, 0, height))
+
+    # Create a compound object and add the triangle to it
+    compound = doc.addObject("Part::Compound", label)
+    compound.Links = [doc.addObject("Part::Feature", "CenteredTriangle")]
+    compound.Links[0].Shape = triangle
+
+    doc.recompute()
+    return compound
+
+def create_sloped_wall(length, height, width, slope_angle,offset_length = 0,label="Sloped Wall"):
+    """
+    Create a wall with a slope on one side and return the DocumentObject.
+
+    Parameters:
+    doc (FreeCAD.Document): The FreeCAD document to add the wall to.
+    length (float): Length of the wall.
+    height (float): Height of the wall.
+    width (float): Width (thickness) of the wall.
+    slope_angle (float): Slope angle in degrees.
+
+    Returns:
+    FreeCAD.DocumentObject: The final sloped wall as a DocumentObject.
+    """
+
+    # Create the base wall
+    base_wall = Part.makeBox(length, width, height)
+
+    # Calculate the slope
+    slope_height = height - (length * math.tan(math.radians(slope_angle)))
+    
+    # Define the points for the sloped face
+    points = [App.Vector(0 + offset_length, 0 , height), 
+              App.Vector(length + offset_length, 0 , slope_height),
+              App.Vector(length + offset_length, 0, height)]
+
+    # Create a face for the sloped side
+    sloped_face = Part.makePolygon(points + [points[0]])
+    sloped_face = Part.Face(sloped_face)
+
+    # Extrude the sloped face
+    sloped_wall = sloped_face.extrude(App.Vector(0, width, 0))
+
+    # Cut the sloped part out of the base wall
+    final_wall_shape = base_wall.cut(sloped_wall)
+
+    # Add the shape to the FreeCAD document
+    wall_obj = App.ActiveDocument.addObject("Part::Feature", "SlopedWallInternal")
+    wall_obj.Shape = final_wall_shape
+    wall_obj.Placement = App.Placement(App.Vector(-length/2, -width/2, 0), App.Rotation(App.Vector(0, 0, 1), 0))
+
+    compound = App.ActiveDocument.addObject("Part::Compound", label)
+    compound.Links = [wall_obj]
+
+    # Recompute the document
+    App.ActiveDocument.recompute()
+
+    return compound
+
+
+def create_hollow_cylinder(outer_radius, inner_radius, height, position=(0,0,0)):
+    
+    """Create a cylinder with a hole in the middle."""
+    
     doc = App.ActiveDocument
-
-    # Bearing dimensions
-
-    tolerance = 0.5
-
-    bearing_width = 7 + tolerance
-    bearing_outer_radius = 22/2 
-    bearing_inner_radius = 8/2 + tolerance/2
-
-    m5_size = 2.5 + tolerance*2
-
-
-    # Create two cylinders
-    base_cylinder_radius = 95
-    base_cylinder_height = 5
-    base_cylinder = create_cylinder(base_cylinder_height, base_cylinder_radius, (0,0,0))
-
-
-    number_of_holes = 8
-    for i in range(number_of_holes):
-        angle = (360/number_of_holes * i) + 360/number_of_holes 
-
-
-        first_hole_distance_from_center = base_cylinder_radius - 10
-
-        x = math.cos(math.radians(angle)) * first_hole_distance_from_center
-        y = math.sin(math.radians(angle)) * first_hole_distance_from_center
-
-        base_cylinder = make_hole(base_cylinder, m5_size * 2, HOLE_INF, (x,y,0),through_hole=True, hole_rotation=(0,0,0))
-
-        second_hole_distance_from_center = base_cylinder_radius - 25
-
-        x = math.cos(math.radians(angle)) * second_hole_distance_from_center
-        y = math.sin(math.radians(angle)) * second_hole_distance_from_center
-
-        base_cylinder = make_hole(base_cylinder, m5_size * 2, HOLE_INF, (x,y,0),through_hole=True, hole_rotation=(0,0,0))
-
-
-    # Create the bottom bearings holding squares
-        
-    number_of_bearings = 8
-
-    inner_barrier_height = 14
-    inner_barrier_width = 20
-    inner_barrier_length = 10
-    outer_barrier_length = 10
-    bearings_distance = base_cylinder_radius - (bearing_width + inner_barrier_length + outer_barrier_length)
-
-    for i in range(number_of_bearings):
-        angle_deg = (360/number_of_bearings) * i + 360/number_of_bearings/2
-        angle_rad = math.radians(angle_deg)
-
-        # Calculate position based on angle
-        x = (bearings_distance) * math.cos(angle_rad)
-        y = (bearings_distance) * math.sin(angle_rad)
-
-        radius_of_half_circle = inner_barrier_height
-
-        chamfer_cylinder = create_extruded_circle_sector(radius_of_half_circle, 90, inner_barrier_width)
-
-        rotate_object_around_center(chamfer_cylinder.Name, (0,1,0), -90)
-
-        chamfer_cylinder.Placement = App.Placement(App.Vector(inner_barrier_width/2, -2, base_cylinder_height),chamfer_cylinder.Placement.Rotation)
-
-        inner_barrier = reset_rotation(chamfer_cylinder)
-
-        x = (bearings_distance) * math.cos(angle_rad)
-
-        y = (bearings_distance) * math.sin(angle_rad)
-
-        inner_barrier.Placement = App.Placement(App.Vector(x, y, 0), App.Rotation(App.Vector(0, 0, 1), angle_deg + 90))
-        
-
-        
-        """ # Create a rectangle at the calculated position with appropriate rotation for the inner barrier
-        inner_barrier = create_centered_rectangle(inner_barrier_length, inner_barrier_width, inner_barrier_height, label="InnerBarrier")
-        inner_barrier.Placement = App.Placement(App.Vector(x, y, base_cylinder_height), App.Rotation(App.Vector(0, 0, 1), angle_deg))
- """
-        x = (bearings_distance + inner_barrier_length/2 + bearing_width) * math.cos(angle_rad)
-
-        y = (bearings_distance + inner_barrier_length/2 + bearing_width) * math.sin(angle_rad)
-
-
-        
-
-        # Create a rectangle at the calculated position with appropriate rotation for the outer barrier
-        outer_barrier = create_centered_rectangle(outer_barrier_length, inner_barrier_width, inner_barrier_height, label="OuterBarrier")
-        outer_barrier.Placement = App.Placement(App.Vector(x, y, base_cylinder_height), App.Rotation(App.Vector(0, 0, 1), angle_deg))
-
-        # Join the inner and outer barriers
-        barriers = join_parts(inner_barrier, outer_barrier)
-
-        # Make a hole in the barriers for the bearing
-
-        x = (bearings_distance - inner_barrier_length/2) * math.cos(angle_rad)
-
-        y = (bearings_distance - inner_barrier_length/2) * math.sin(angle_rad)
-
-        
-        barriers = make_hole(barriers, bearing_inner_radius * 2, 30, (x, y, base_cylinder_height + inner_barrier_height*0.5),hole_rotation=[(0,90,0),(angle_deg,0,0)])
-
-        # Add the rectangle to the compound object
-        base_cylinder = join_parts(base_cylinder, barriers)
-
-        # Add a rectangular hole with width equal to bearing width and length equal to bearing_outer_diameter to the base cylinder for the bearing
-
-        bearing_width_for_cut = bearing_width + tolerance*2
-
-        bearing_hole = create_centered_rectangle(bearing_width_for_cut, bearing_outer_radius*2, 50, label="BearingHole")
-        
-        x = (bearings_distance + (inner_barrier_length/2 + bearing_width)/2) * math.cos(angle_rad)
-        y = (bearings_distance + (inner_barrier_length/2 + bearing_width)/2) * math.sin(angle_rad)
-        
-        
-
-        bearing_hole.Placement = App.Placement(App.Vector(x, y, 0), App.Rotation(App.Vector(0, 0, 0), angle_deg))
-        
-        base_cylinder =  cut(base_cylinder, bearing_hole)   
-
-
-
-
-    # Make the holes for the motor in the center
-        
-    motor_hole_radius = 6.21/2 + tolerance/2
-    motor_hole_distance_from_center = 49.21 
-
-    for i in range(4):
-        angle_deg = (360/4) * i
-        angle_rad = math.radians(angle_deg)
-
-        # Calculate position based on angle
-        x = (motor_hole_distance_from_center) * math.cos(angle_rad)
-        y = (motor_hole_distance_from_center) * math.sin(angle_rad)
-
-        base_cylinder = make_hole(base_cylinder, motor_hole_radius * 2, HOLE_INF,(x, y, base_cylinder_height),through_hole=True)
-        
-
-
-    # now the hole for the shaft in the middle
-        
-    shaft_hole_radius = 28
-
-    base_cylinder = make_hole(base_cylinder, shaft_hole_radius * 2, HOLE_INF,(0, 0, base_cylinder_height),through_hole=True)
     
-    base_cylinder.Label = "Base for z axis"
-
+    # Ensure the inner radius is smaller than the outer radius
     
-if App.ActiveDocument is None:
-    App.newDocument()
+    if inner_radius >= outer_radius:
+        raise ValueError("Inner radius must be smaller than outer radius")
 
-main()
+    # Create the outer cylinder
+    outer_cylinder = Part.makeCylinder(outer_radius, height)
+    outer_cylinder.translate(App.Vector(position[0], position[1], position[2]))
 
-Gui.ActiveDocument.recompute()
-Gui.SendMsgToActiveView("ViewFit")
+    # Create the inner cylinder (hole)
+    inner_cylinder = Part.makeCylinder(inner_radius, height)
+    inner_cylinder.translate(App.Vector(position[0], position[1], position[2]))
 
+    # Subtract the inner cylinder from the outer cylinder
+    hollow_cylinder = outer_cylinder.cut(inner_cylinder)
+
+    # Create a FreeCAD object and set its shape
+    cylinder_part = doc.addObject("Part::Feature", "HollowCylinder")
+    cylinder_part.Shape = hollow_cylinder
+
+    return cylinder_part

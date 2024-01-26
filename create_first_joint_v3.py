@@ -162,54 +162,62 @@ def create_sloped_wall(length, height, width, slope_angle,offset_length = 0,labe
     return compound
 
 def create_joint_motor_holder(base_cylinder):
-   
+    forward_offset = -36
 
-    joint_motor_holder = create_sloped_wall(joint_motor_holder_slope_length, joint_motor_holder_height, joint_motor_holder_width_for_base, 70,offset_length=joint_motor_holder_length*2)
+    joint_motor_holder = create_centered_rectangle(joint_motor_holder_width_for_base, joint_motor_holder_length, joint_motor_holder_height)
+
+    joint_motor_holder.Placement = App.Placement(App.Vector(0, forward_offset, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
 
 
-    #make a square hole for the motor with the motor height and and width
+    # now add a rectangle below it to raise it by 30mm
 
-    joint_motor_holder_cut = create_centered_rectangle(joint_motor_holder_slope_length, joint_motor_holder_width + tolerance, joint_motor_holder_height)
+    raise_height = 50
+    
+    base_length = 72 + joint_motor_holder_length
 
-    joint_motor_holder_cut.Placement = App.Placement(App.Vector((joint_motor_holder_length), 0, 0), App.Rotation(App.Vector(0,0,1),0))
+    joint_motor_holder_base = create_centered_rectangle(joint_motor_holder_width_for_base, base_length, raise_height)
 
-    joint_motor_holder = cut(joint_motor_holder, joint_motor_holder_cut)
+    joint_motor_holder.Placement.Base = joint_motor_holder.Placement.Base + App.Vector(0,0,raise_height)
 
-    joint_motor_holder.Placement = App.Placement(App.Vector(0, 50, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),90))
+    joint_motor_holder_base.Placement = App.Placement(App.Vector(0, base_length/2 + forward_offset - joint_motor_holder_length/2, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
 
-    # now for the cuts for the motor holes
+    joint_motor_holder = join_parts(joint_motor_holder, joint_motor_holder_base)
 
     # Create the motor holes
-
+    
     motor_hole_radius = 6.21/2 + tolerance/2
-    motor_hole_distance_from_center = 49.21
-
+    motor_hole_distance_from_center = 37.5
+    
     for i in range(4):
         angle = (360/4 * i) + 360/4/2
 
         x = math.cos(math.radians(angle)) * motor_hole_distance_from_center
         y = math.sin(math.radians(angle)) * motor_hole_distance_from_center
 
-        joint_motor_holder = make_hole(joint_motor_holder, motor_hole_radius*2, HOLE_INF, (x,0,y + first_joint_base_initial_height + joint_motor_holder_height / 2 + base_cylinder_height),through_hole=True,hole_rotation=[(0,90,0),(90,0,0)])
+        joint_motor_holder = make_hole(joint_motor_holder, motor_hole_radius*2, HOLE_INF, (x,0,y + first_joint_base_initial_height + joint_motor_holder_height / 2 + base_cylinder_height + raise_height),through_hole=True,hole_rotation=[(0,90,0),(90,0,0)])
 
     # now for the motor shaft hole
         
-    shaft_hole_radius = 28
+    shaft_hole_radius = 31
         
-    joint_motor_holder = make_hole(joint_motor_holder, shaft_hole_radius*2, HOLE_INF, (0,0,first_joint_base_initial_height + joint_motor_holder_height / 2 + base_cylinder_height),through_hole=True,hole_rotation=[(0,90,0),(90,0,0)])
+    joint_motor_holder = make_hole(joint_motor_holder, shaft_hole_radius*2, HOLE_INF, (0,0,first_joint_base_initial_height + joint_motor_holder_height / 2 + base_cylinder_height + raise_height),through_hole=True,hole_rotation=[(0,90,0),(90,0,0)])
 
-    # move joint motor holder to the center and add the side bars and hole
-    
-    joint_motor_holder_current_position = 17.5 + motor_shaft_hole_radius + 20
-    joint_motor_holder.Placement = App.Placement(App.Vector(0, -(joint_motor_holder_current_position),0), App.Rotation(App.Vector(0,0,1),0))
 
     # add the side bars
 
     side_bar_length = 40
-    side_bar_height = 5
+    side_bar_height = 8
     side_bar_width = m5_size*2 + (4 + 4)
+    motor_reductor_length = 101
+    
+
+
     for i in range(2):
         side_bar = create_centered_rectangle(side_bar_width, side_bar_length, side_bar_height)
+        
+
+        
+
 
         # add two holes in each
     
@@ -221,16 +229,17 @@ def create_joint_motor_holder(base_cylinder):
                 
             base_cylinder = make_hole(base_cylinder, m5_size*2, HOLE_INF, ((lerp([0,1],[-1,1])(i)) * (joint_motor_holder_width_for_base/2 + side_bar_width/2) , 0 + (lerp([0,1],[-1,1])(j)) * side_bar_hole_distance_from_center, first_joint_base_initial_height + base_cylinder_height),through_hole=True)
         
-        
-        
+
         side_bar.Placement = App.Placement(App.Vector((lerp([0,1],[-1,1])(i)) * (joint_motor_holder_width_for_base/2 + side_bar_width/2) , 0, first_joint_base_initial_height + base_cylinder_height), App.Rotation(App.Vector(0,0,1),0))
+        
+        
 
         # join the side bar to the joint motor holder
 
         joint_motor_holder = join_parts(joint_motor_holder, side_bar)
 
-    # Add a rectangle on the left side of the joint motor holder with a rounded top to add the endstop
-        
+    """ # Add a rectangle on the left side of the joint motor holder with a rounded top to add the endstop
+    
 
     endstop_rectangle_height = 40
     endstop_rectangle_width = 100
@@ -303,7 +312,7 @@ def create_joint_motor_holder(base_cylinder):
     joint_motor_holder = make_hole(joint_motor_holder, m5_size*2, HOLE_INF, (x,y, first_joint_base_initial_height + base_cylinder_height + side_bar_height),through_hole=True)
     
     base_cylinder = make_hole(base_cylinder, m5_size*2, HOLE_INF, (x,y, first_joint_base_initial_height + base_cylinder_height),through_hole=True)
-
+ """
     base_cylinder.Label = "Base For First Joint"
 
     joint_motor_holder.Label = "Motor Holder For First Joint"
@@ -339,10 +348,10 @@ def create_hollow_cylinder(outer_radius, inner_radius, height, position=(0,0,0))
     return cylinder_part
 
 HOLE_INF = 1000
-joint_motor_holder_height = 86
+joint_motor_holder_height = 100
 joint_motor_holder_width = 86
 joint_motor_holder_width_for_base = joint_motor_holder_width + 8 + 8
-joint_motor_holder_length = 8
+joint_motor_holder_length = 14
 joint_motor_holder_slope_length = 50
 tolerance = 0.5
 m5_size = 2.5 + tolerance*2
