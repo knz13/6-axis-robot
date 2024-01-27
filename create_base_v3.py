@@ -254,7 +254,7 @@ def main():
 
         base_cylinder = cut(base_cylinder, second_nut_holder)
 
-
+    return
 
     # Create the bottom bearings holding squares
         

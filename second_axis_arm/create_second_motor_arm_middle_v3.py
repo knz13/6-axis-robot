@@ -219,16 +219,28 @@ def rotate_object_around_center(object_name, axis, angle):
     
     obj.Placement = new_placement
 
+def reset_rotation(obj):
+
+    new_obj = create_centered_rectangle(0.001,0.001,0.001,label="ResetRotation")
+
+    # put it very far away
+
+    new_obj.Placement = App.Placement(App.Vector(100000,100000,100000), App.Rotation(App.Vector(0, 0, 1), 0))
+
+    obj = cut(obj,new_obj)
+
+    return obj
+
 HOLE_INF = 1000
 tolerance = 0.5
 m5_size = 2.5 + tolerance*2
 m5_head_size = 8.5 + tolerance*2
-motor_shaft_hole_radius = 9 + tolerance/5
+motor_shaft_hole_radius = 9 + tolerance
 bearing_width = 7 + tolerance
 bearing_outer_radius = 22/2 + tolerance
 bearing_inner_radius = 8/2 + tolerance/2
 arm_cylinder_radius = 40
-arm_cylinder_height = 40
+arm_cylinder_height = 35
 base_current_height = 150
 
 def main():
@@ -245,27 +257,17 @@ def main():
         
     arm_cylinder_extra_height = 8
     arm_cylinder_extra = create_cylinder(arm_cylinder_extra_height, arm_cylinder_radius, (0,0,-arm_cylinder_extra_height))
-    
+
 
     arm_cylinder = join_parts(arm_cylinder, arm_cylinder_extra)
 
     number_of_slots = 4
 
+    # Add 4 slots for screws on the outside of the arm cylinder
+    
     for i in range(number_of_slots):
 
         angle = (360/number_of_slots * i) + 360/number_of_slots/2
-
-        hole_height = 35
-        
-        x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size/2)
-        y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size/2)
-
-        extra_cut = create_centered_rectangle(m5_head_size*3, m5_head_size*3, hole_height)
-        
-        extra_cut.Placement = App.Placement(App.Vector(x,y,0), App.Rotation(App.Vector(0,0,1),angle + 45))
-    
-        
-        arm_cylinder = cut(arm_cylinder, extra_cut)
 
         # now make an m5 cut on the top cylinder
 
@@ -274,136 +276,25 @@ def main():
 
         arm_cylinder = make_hole(arm_cylinder, m5_size*2, arm_cylinder_extra_height, (x,y,-arm_cylinder_extra_height),hole_rotation=(0,0,0))
 
-    return
 
-
-
-    
-    # now for the motor holder, first add half a cylinder on top of the base arm
-    
-    half_cylinder_radius = 35
-    half_cylinder_height = arm_cylinder_radius*2
-
-    half_cylinder = create_cylinder(half_cylinder_height, half_cylinder_radius, (0,0,arm_cylinder_height))
-
-    # create the square to cut half the cylinder
-
-    half_cylinder_cut = create_centered_rectangle(half_cylinder_height, half_cylinder_radius*2, half_cylinder_radius)
-
-    half_cylinder_cut.Placement = App.Placement(App.Vector(0,0,arm_cylinder_height - half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
-
-
-    
-    
-    half_cylinder.Placement = App.Placement(App.Vector(-half_cylinder_height/2,0,arm_cylinder_height), compound_rotation([(0,90,0),(0,0,90)])) 
-    
-
-    half_cylinder = cut(half_cylinder, half_cylinder_cut)
-
-    # now add an extra square below the half cylinder
-
-    half_cylinder_cut = create_centered_rectangle(half_cylinder_height, half_cylinder_radius*2, half_cylinder_radius)
-
-    half_cylinder_cut.Placement = App.Placement(App.Vector(0,0,arm_cylinder_height - half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
-
-    half_cylinder = join_parts(half_cylinder, half_cylinder_cut)
-
-    # now move the half cylinder up
-
-    half_cylinder.Placement = App.Placement(App.Vector(0,0,half_cylinder_radius), App.Rotation(App.Vector(0,0,1),0))
-
-    # now make a hole in the half cylinder for the motor shaft
-
-    half_cylinder = make_hole(half_cylinder, motor_shaft_hole_radius*2, HOLE_INF, (0,0,arm_cylinder_height + half_cylinder_radius*0.85),through_hole=True,hole_rotation=[(0,90,0)])
-    
-    # now for the keyhole
-
-    #key_hole_width = 5 + tolerance/3
-
-    #key_hole = create_centered_rectangle(key_hole_width, key_hole_width, HOLE_INF)
-    
-    
-    #key_hole.Placement = App.Placement(App.Vector(-HOLE_INF/2,0, arm_cylinder_height + half_cylinder_radius -motor_shaft_hole_radius - key_hole_width/3), compound_rotation([(0,90,0)]))
-
-    #half_cylinder = cut(half_cylinder, key_hole)
-
-
-    # cut holes in both sides with the diameter of the flange
-
-    flange_hole_diameter = 62
-    flange_holes_distance = 47/2
-    flange_inner_holes_size = 6 + tolerance
-    middle_section_width = 24.14
-
-    half_cylinder = make_hole(half_cylinder, flange_hole_diameter, arm_cylinder_radius - middle_section_width/2, (arm_cylinder_radius - (arm_cylinder_radius - middle_section_width/2),0, arm_cylinder_height + half_cylinder_radius*0.85),hole_rotation=[(0,90,0)])
-    
-    # now one on the other side
-
-    half_cylinder = make_hole(half_cylinder, flange_hole_diameter, arm_cylinder_radius - middle_section_width/2, (-(arm_cylinder_radius - (arm_cylinder_radius - middle_section_width/2)),0, arm_cylinder_height + half_cylinder_radius*0.85),hole_rotation=[(0,-90,0)])
-
-    # now make holes for the inner flange holes
-
-    flange_number_of_holes = 4
-
-    for i in range(flange_number_of_holes):
-            
-            angle = (360/flange_number_of_holes * i) + 360/flange_number_of_holes/2
-    
-            x = math.cos(math.radians(angle)) * (flange_holes_distance)
-            y = math.sin(math.radians(angle)) * (flange_holes_distance)
-    
-            half_cylinder = make_hole(half_cylinder, flange_inner_holes_size, HOLE_INF, (0,x, arm_cylinder_height + half_cylinder_radius*0.85 + y),hole_rotation=[(0,90,0)],through_hole=True)
-
-
-    # now create a hollow cylinder to cut the parts that are not needed
-
-
-
-    hollow_cylinder = create_hollow_cylinder(arm_cylinder_radius + 200, arm_cylinder_radius, HOLE_INF)
-
-    half_cylinder = cut(half_cylinder, hollow_cylinder)
-
-    arm_cylinder = join_parts(arm_cylinder, half_cylinder)
-
-    # now add 4 holes to make it easier to tighten the screws
-
-    number_of_slots = 4
-
-    for i in range(number_of_slots):
-
-       
-
-        angle = (360/number_of_slots * i) + 360/number_of_slots/2
-
-        x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
-        y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
+    # now copy the arm cylinder and rotate it so that it is on top of the other one
         
-        #arm_cylinder = make_hole(arm_cylinder, m5_size*4, HOLE_INF, (x,y,1),hole_rotation=(0,0,0))
+    arm_cylinder_2 = App.ActiveDocument.copyObject(arm_cylinder, True)
 
-        # cut a square
+    rotate_object_around_center(arm_cylinder_2.Name, (1,0,0), 180)
 
-        square_length = m5_head_size*4
-        square_width = m5_head_size*3
+    # move it up
 
-        
+    arm_cylinder_2.Placement.Base = arm_cylinder_2.Placement.Base + App.Vector(0,0,arm_cylinder_height + arm_cylinder_extra_height)
 
-        square = create_centered_rectangle(square_length,square_width, HOLE_INF)
 
-        square_offset = m5_head_size
+    # now join the two cylinders
 
-        if i in [1,2]:
-            square_offset = -square_offset
+    arm_cylinder = join_parts(arm_cylinder, arm_cylinder_2)
 
-        square_y_offset = m5_head_size
 
-        if i in [0,1]:
-            square_y_offset = -square_y_offset
 
-        square.Placement = App.Placement(App.Vector(x + square_offset,y - square_y_offset,0), App.Rotation(App.Vector(0,0,1),0))
 
-        arm_cylinder = cut(arm_cylinder, square)
-        
-    
     # now cut it in half
 
     box_cut = create_centered_rectangle(arm_cylinder_radius*2, arm_cylinder_radius*2, HOLE_INF)
@@ -416,39 +307,55 @@ def main():
 
     rotate_object_around_center(arm_cylinder.Name, (1,0,0), -90)
 
-    # move it back to center
 
-    arm_cylinder.Placement.Base = arm_cylinder.Placement.Base + App.Vector(0,arm_cylinder_height/2 + arm_cylinder_extra_height/2 - 1.564,0)
+    arm_cylinder = reset_rotation(arm_cylinder)
 
-    # now create 2 holes
+    arm_cylinder.Placement = App.Placement(App.Vector(0,16.41 + m5_size,-15.07), App.Rotation(App.Vector(0,0,1),0))
+
+
+
+    middle_section_width = 30
+
+    square = create_centered_rectangle(arm_cylinder_radius*2, arm_cylinder_height*2, HOLE_INF)
+
+    square.Placement = App.Placement(App.Vector(0,0,arm_cylinder_radius - (arm_cylinder_radius - middle_section_width/2)), App.Rotation(App.Vector(0,0,1),0))
+    
+
+    arm_cylinder = cut(arm_cylinder, square)
+
+    # add a big hole in the middle
+
+    hole_diameter = 20
+    hole_section_width = 20
+
+    arm_cylinder = make_hole(arm_cylinder, hole_diameter, HOLE_INF, (0,0, arm_cylinder_radius - (arm_cylinder_radius - hole_section_width/2)),hole_rotation=[(0,0,0)])
+
+    
+    # make an m5 hole in the middle
+
+    arm_cylinder = make_hole(arm_cylinder, m5_size*2, HOLE_INF, (0,0, arm_cylinder_radius - (arm_cylinder_radius - hole_section_width/2)),hole_rotation=[(0,0,0)],through_hole=True)
+
+    return
+
+    # now create 4 holes
     number_of_slots = 4
 
     for i in range(number_of_slots):
-
-        if i in [0,1]:
-            continue
 
         angle = (360/number_of_slots * i) + 360/number_of_slots/2 
 
         x = math.cos(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
         y = math.sin(math.radians(angle)) * (arm_cylinder_radius - m5_head_size)
-        
-        arm_cylinder = make_hole(arm_cylinder, m5_size*2, HOLE_INF, (x,y,0),through_hole=True,hole_rotation=(0,0,0))
 
-    # move down
-        
-    arm_cylinder.Placement.Base = arm_cylinder.Placement.Base + App.Vector(0,0,-31)
+        extra_offset_x = -8
+
+        if i in [0,3]:
+            extra_offset_x = -extra_offset_x
+
+        arm_cylinder = make_hole(arm_cylinder, m5_size*2, HOLE_INF, (x + extra_offset_x,y,0),through_hole=True,hole_rotation=(0,0,0))
     
-    # now make a almost through hole in the top to fit another screw
-        
-    arm_cylinder = make_hole(arm_cylinder, m5_size*4, HOLE_INF, (0, -1.56 - m5_size*4/2 + half_cylinder_radius + half_cylinder_radius/1.5,m5_head_size*1.5),hole_rotation=(0,0,0))
 
-    # now make a through hole
 
-    arm_cylinder = make_hole(arm_cylinder, m5_size*2, HOLE_INF, (0, -1.56 - m5_size*4/2 + half_cylinder_radius + half_cylinder_radius/1.5,0),hole_rotation=(0,0,0),through_hole=True)
-    
-    arm_cylinder.Label = "Arm Cylinder"
-  
 
 if App.ActiveDocument is None:
     App.newDocument()
